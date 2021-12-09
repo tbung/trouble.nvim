@@ -7,11 +7,30 @@ local M = {}
 ---@param options TroubleOptions
 ---@return Item[]
 function M.diagnostics(_win, buf, cb, options)
+  local buffer_diags = {}
   if options.mode == "lsp_workspace_diagnostics" then
     buf = nil
+    buffer_diags = vim.lsp.diagnostic.get_all()
+  else
+    buffer_diags = vim.diagnostic.get(buf)
+    vim.tbl_map(
+      function (item)
+        item.range = {
+          ["end"] = {
+            character = item.end_col,
+            line = item.end_lnum
+          },
+          ["start"] = {
+            character = item.col,
+            line = item.lnum
+          }
+        }
+        return item
+      end,
+      buffer_diags
+    )
+    buffer_diags = { [buf] = buffer_diags }
   end
-
-  local buffer_diags = buf and { [buf] = vim.lsp.diagnostic.get(buf) } or vim.lsp.diagnostic.get_all()
 
   local items = util.locations_to_items(buffer_diags, 1)
   cb(items)
